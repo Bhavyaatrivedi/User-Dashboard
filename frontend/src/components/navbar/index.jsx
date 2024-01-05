@@ -22,7 +22,7 @@ const Navbar = (props) => {
       <div className="ml-[6px]">
         <div className="h-6 w-[224px] pt-1">
           <a
-            className="text-sm font-normal text-navy-700 hover:underline dark:text-white dark:hover:text-white"
+            className="text-sm font-normal text-navy-700 dark:text-white dark:hover:text-white"
             href=" "
           >
             Pages
@@ -32,7 +32,7 @@ const Navbar = (props) => {
             </span>
           </a>
           <Link
-            className="text-sm font-normal capitalize text-navy-700 hover:underline dark:text-white dark:hover:text-white"
+            className="text-sm font-normal capitalize text-navy-700  dark:text-white dark:hover:text-white"
             to="#"
           >
             {brandText}

@@ -1,6 +1,6 @@
 const util = require("util");
 const multer = require("multer");
-const maxSize = 2 * 1024 * 1024;
+const maxSize = 10* 1024 * 1024;
 
 let storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -12,10 +12,10 @@ let storage = multer.diskStorage({
   },
 });
 
-let uploadFile = multer({
+let uploadFiles = multer({
   storage: storage,
   limits: { fileSize: maxSize },
-}).single('file');
+}).array('files', 6); 
 
-let uploadFileMiddleware = util.promisify(uploadFile);
-module.exports = uploadFileMiddleware;
+let uploadFilesMiddleware = util.promisify(uploadFiles);
+module.exports = uploadFilesMiddleware;

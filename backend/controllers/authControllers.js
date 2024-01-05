@@ -320,22 +320,21 @@ module.exports.editUser = async (req, res) => {
 
 
 // upload files
-const uploadFile = require("../middlewares/upload");
-
+const uploadFilesMiddleware = require("../middlewares/upload");
 const fs = require("fs");
-
 
 module.exports.upload_file = async (req, res) => {
   try {
-    await uploadFile(req, res);
-   
+    await uploadFilesMiddleware(req, res);
 
-    if (req.file == undefined) {
-      return res.status(400).send({ message: "Please upload a file!" });
+    if (req.files == undefined || req.files.length === 0) {
+      return res.status(400).send({ message: "Please upload at least one file!" });
     }
 
+    const fileNames = req.files.map(file => file.originalname);
+    
     res.status(200).send({
-      message: "Uploaded the file successfully: " + req.file.originalname,
+      message: "Uploaded files successfully: " + fileNames.join(', '),
     });
   } catch (err) {
     console.log(err);
@@ -347,10 +346,11 @@ module.exports.upload_file = async (req, res) => {
     }
 
     res.status(500).send({
-      message: `Could not upload the file: ${req.file.originalname}. ${err}`,
+      message: `Could not upload the files. ${err}`,
     });
   }
 };
+
 
 
 //get files
@@ -515,26 +515,6 @@ module.exports.update_fields = async (req, res) => {
 //company management
 
 //add a company
-// module.exports.addUser = async (req, res) => {
-//   try {
-//     const { email, password, mobileNo, address } = req.body;
-//     const user = await User.create({ email, password, mobileNo, address });
-
-//     const token = createToken(user._id);
-
-//     res.cookie('jwt', token, {
-//       withCredentials: true,
-//       httpOnly: false,
-//       maxAge: maxAge * 1000,
-//     });
-
-//     res.status(201).json({ user: user._id, created: true });
-//   } catch (err) {
-//     console.error(err);
-//     const errors = handleErrors(err);
-//     res.json({ errors, created: false });
-//   }
-// };
 
 const Company = require("../model/companyModel")
 
@@ -560,3 +540,42 @@ module.exports.addCompany = async(req, res) =>{
     res.json({ errors, created: false });
   }
 }
+
+//get all companies
+module.exports.get_company = async(req, res) =>{
+  const data = await Company.find();
+  res.json(data);
+}
+
+//many to one relationship
+
+//get users of a company
+module.exports.user_company = async (req, res) => {
+  try {
+    const company = await Company.findOne({ name: req.params.id }).populate('users'); 
+    res.json(company);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+//get company of user
+module.exports.get_companyName = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await User.findById(userId).populate('company');
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const companyName = user.company ? user.company.name : 'Not associated with any company';
+    res.json({ companyName });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+

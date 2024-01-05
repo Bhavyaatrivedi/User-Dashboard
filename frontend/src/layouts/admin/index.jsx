@@ -6,6 +6,7 @@ import Footer from "components/footer/Footer";
 import routes from "routes.js";
 import AddUser from "views/admin/users/addUser";
 import EditUser from "views/admin/users/editUser"; 
+import AddCompany from "views/admin/company/addCompany";
 
 
 export default function Admin(props) {
@@ -83,6 +84,9 @@ export default function Admin(props) {
                 {getRoutes(routes)}
                 <Route path="/add-user" element={<AddUser />} />
                 <Route path="/edit-user" element={<EditUser />} />
+                <Route path="/add-company" element={<AddCompany />} />
+            
+            
                 {/* ... other routes ... */}
                 <Route
                   path="/"

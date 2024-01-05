@@ -2,8 +2,9 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const validator = require('validator');
 const uniqueValidator = require('mongoose-unique-validator');
+const Schema = mongoose.Schema
 
-const userSchema = new mongoose.Schema({
+const userSchema = new Schema({
   email: {
     type: String,
     required: [true, 'Email is Required'],
@@ -33,6 +34,11 @@ const userSchema = new mongoose.Schema({
     type:String,
     // default:'',
   },
+  company:{
+    type: Schema.Types.ObjectId,
+    ref:"Company"
+  }
+
 });
 
 userSchema.plugin(uniqueValidator);

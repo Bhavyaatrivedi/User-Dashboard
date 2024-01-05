@@ -7,10 +7,10 @@ import EditUser from './editUser';
 
 const User = () => {
   const [users, setUsers] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null); // Track the selected user for editing
+  const [selectedUser, setSelectedUser] = useState(null);
   const [editModalShow, setEditModalShow] = useState(false);
   const navigate = useNavigate();
-  const [isRefrechData, setRefechData] = useState(true); // Track the selected user for editing
+  const [isRefrechData, setRefechData] = useState(true);
 
   useEffect(() => {
     if(isRefrechData != false){
@@ -79,7 +79,7 @@ const User = () => {
         Create User
       </button>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px', backgroundColor: 'white' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px', borderRadius: '8px',backgroundColor: 'white' }}>
         <thead>
           <tr>
             <th style={{ padding: '10px' }} className="text-left">S.No.</th>

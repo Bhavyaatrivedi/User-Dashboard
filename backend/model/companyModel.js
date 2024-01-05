@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
 const validator = require('validator');
-const uniqueValidator = require('mongoose-unique-validator');
+const Schema = mongoose.Schema
 
-const companySchema = new mongoose.Schema({
+
+const companySchema = new Schema({
   name: {
     type: String,
     required: [true, 'Company Name is Required'],
@@ -36,6 +36,10 @@ const companySchema = new mongoose.Schema({
     type:String,
     // default:'',
   },
+  users: [{
+    type: Schema.Types.ObjectId,
+    ref: "Users"
+  }],
 });
 
 

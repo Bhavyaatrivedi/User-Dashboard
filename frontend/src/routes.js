@@ -7,6 +7,8 @@ import Profile from "views/admin/profile";
 import DataTables from "views/admin/tables";
 import RTLDefault from "views/rtl/default";
 import User from "views/admin/users/user";
+import Company from "views/admin/company/company";
+
 
 
 
@@ -59,7 +61,13 @@ const routes = [
     icon: <MdPerson className="h-6 w-6" />,
     component: <User />,
   },
-  
+  {
+    name: "Company Management",
+    layout: "/admin",
+    path: "company",
+    icon: <MdPerson className="h-6 w-6" />,
+    component: <Company />,
+  },
   {
     name: "Sign In",
     layout: "/auth",
