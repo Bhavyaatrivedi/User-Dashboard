@@ -13,7 +13,7 @@ const userSchema = new Schema({
   },
   password: {
     type: String,
-    required: [true, 'Password is Required'],
+    // required: [true, 'Password is Required'],
   },
   mobileNo: {
     type: String,
@@ -30,6 +30,7 @@ const userSchema = new Schema({
     type: String,
     required: [true, 'Address is Required'],
   },
+
   token:{
     type:String,
     // default:'',
@@ -37,17 +38,69 @@ const userSchema = new Schema({
   company:{
     type: Schema.Types.ObjectId,
     ref:"Company"
+  },
+  name:{
+    type:String,
+    required:[ true, 'Name is required']
+  },
+  workExp:{
+    type:String,
+    required:[true, 'work experience is required']
+  },
+  linkedinUrl: {
+    type: String,
+    required:[true, 'linkedin url is required']
+  },
+  userImg: {
+    type: String
+  },
+
+  project: {
+    type: String,
+   
+  },
+  references: {
+    type: String,
+   
+  },
+  skill: {
+    type: String,
+   
+  },
+  education: {
+    type: String,
+   
+  },
+  objective:{
+    type: String,
   }
+
 
 });
 
 userSchema.plugin(uniqueValidator);
 
+// userSchema.pre('save', async function (next) {
+//   const salt = await bcrypt.genSalt();
+//   this.password = await bcrypt.hash(this.password, salt);
+//   next();
+// });
+
 userSchema.pre('save', async function (next) {
-  const salt = await bcrypt.genSalt();
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
+  try {
+    // Only hash the password if it's provided
+    if (this.isModified('password') || this.isNew) {
+      const salt = await bcrypt.genSalt();
+      const hashedPassword = await bcrypt.hash(this.password, salt);
+      this.password = hashedPassword;
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
+
 
 userSchema.statics.login = async function (email, password) {
   const user = await this.findOne({ email });

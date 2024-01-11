@@ -3,8 +3,10 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const authRoutes = require('./routes/authRoutes');
 const cookieParser = require('cookie-parser');
+const path = require('path');
 
 const app = express();
+
 
 
 global.__basedir = __dirname;
@@ -48,6 +50,7 @@ mongoose
     console.log(err.message);
   });
 
+  app.use('/Images', express.static(path.join(__dirname, 'Images')));
 
 app.use(cookieParser());
 

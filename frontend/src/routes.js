@@ -8,6 +8,7 @@ import DataTables from "views/admin/tables";
 import RTLDefault from "views/rtl/default";
 import User from "views/admin/users/user";
 import Company from "views/admin/company/company";
+import File from "views/admin/files/file";
 
 
 
@@ -60,6 +61,13 @@ const routes = [
     path: "user",
     icon: <MdPerson className="h-6 w-6" />,
     component: <User />,
+  },
+  {
+    name: "Upload Files",
+    layout: "/admin",
+    path: "files",
+    icon: <MdPerson className="h-6 w-6" />,
+    component: <File />,
   },
   {
     name: "Company Management",

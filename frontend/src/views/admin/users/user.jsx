@@ -55,18 +55,39 @@ const User = () => {
     setEditModalShow(false);
   };
 
-  const handleUpdateUser = (updatedUser) => {
-    // Update the user data in the state
-    setUsers((prevUsers) =>
-      prevUsers.map((user) =>
-        user._id === updatedUser._id ? { ...user, ...updatedUser } : user
-      )
-    );
-  };
 
   const handleAddUser = () => {
     navigate('/admin/add-user');
+    setRefechData(true);
   };
+
+ 
+  const handleDownload = async (userId) => {
+    try {
+      const response = await axios.post(`http://localhost:8000/generate-pdf/${userId}`, {},{
+        responseType: 'blob', // Indicate that the response is JSON
+      });
+  
+      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const link = document.createElement('a');
+        link.href = reader.result;
+        link.download = 'document.docx';
+        link.click();
+      };
+      reader.readAsDataURL(blob);
+     
+  
+      console.log("Downloaded");
+    } catch (error) {
+      console.error('Error downloading document:', error);
+    }
+  };
+  
+
+  
 
   return (
     <div>
@@ -104,11 +125,20 @@ const User = () => {
                   Delete
                 </button>
                 <button
-                  className="bg-blue-500 text-white py-1 px-2 rounded"
+                  className="bg-amber-500 text-white py-1 px-2 rounded mr-2"
                   onClick={() => handleEditUser(user)}
                 >
                   Edit
                 </button>
+               
+  
+                <button
+                  className="bg-blue-500 text-white py-1 px-2 rounded"
+                  onClick={() => handleDownload(user._id)}
+                >
+                  Download
+                </button>
+
                 
               </td>
             </tr>
@@ -123,7 +153,7 @@ const User = () => {
           setRefechData = {setRefechData}
           user={selectedUser}
           onClose={handleCloseEditUser}
-          // onUpdate={handleUpdateUser} 
+       
         />
       )}
     </div>

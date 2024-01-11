@@ -7,6 +7,8 @@ import routes from "routes.js";
 import AddUser from "views/admin/users/addUser";
 import EditUser from "views/admin/users/editUser"; 
 import AddCompany from "views/admin/company/addCompany";
+import UploadFiles from "views/admin/files/uploadFiles";
+import DownloadDoc from "views/admin/users/downloadDoc";
 
 
 export default function Admin(props) {
@@ -85,6 +87,9 @@ export default function Admin(props) {
                 <Route path="/add-user" element={<AddUser />} />
                 <Route path="/edit-user" element={<EditUser />} />
                 <Route path="/add-company" element={<AddCompany />} />
+                <Route path="/upload-file" element={<UploadFiles />} />
+                <Route path="/download-docs" element={<DownloadDoc />} />
+               
             
             
                 {/* ... other routes ... */}

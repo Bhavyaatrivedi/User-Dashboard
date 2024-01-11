@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "docxtemplater": "^3.42.1",
+    "jszip": "^2.7.0"
+  }
+}

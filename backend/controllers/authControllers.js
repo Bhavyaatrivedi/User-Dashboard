@@ -3,6 +3,11 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const path = require('path');
 const randomstring = require('randomstring');
+const JSZip = require('jszip');
+const Docxtemplater = require('docxtemplater');
+const fs = require('fs');
+const Jimp = require('jimp')
+
 // const config = require('../config');
 
 require('dotenv').config();
@@ -179,6 +184,35 @@ module.exports.update_password = async(req, res) =>{
 }
 
 
+//download document
+module.exports.download_doc = async(req, res) =>{
+  const userId = req.params.id;
+  console.log(userId)
+
+  try{
+    const user = await User.findById(userId);
+
+    if(!user){
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const userInfo = {
+      _id: user._id,
+      email: user.email,
+      mobileNo: user.mobileNo,
+      address: user.address,
+   
+    };
+    console.log(userInfo)
+    res.status(200).json(userInfo);
+
+  }catch(error){
+    console.error('Error retrieving user:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+
 //checking password
 const comparePassword = async (plainPassword, hashedPassword) => {
   try {
@@ -246,26 +280,46 @@ module.exports.reset_password = async (req, res) => {
 
 //adding a user
 
+
 module.exports.addUser = async (req, res) => {
   try {
-    const { email, password, mobileNo, address } = req.body;
-    const user = await User.create({ email, password, mobileNo, address });
+    const { email, password, mobileNo, address, name, workExp, linkedinUrl, project, references, skill, education, objective } = req.body;
+    const userImgPath = req.file ? req.file.path : null;
 
-    const token = createToken(user._id);
+    // Extract the image name from the path
+    const imageName = userImgPath ? path.basename(userImgPath) : null;
 
-    res.cookie('jwt', token, {
-      withCredentials: true,
-      httpOnly: false,
-      maxAge: maxAge * 1000,
+    
+
+    console.log("userImgPath:", userImgPath);
+    console.log("userImg:", imageName);
+
+    const user = await User.create({
+      email,
+      password,
+      mobileNo,
+      address,
+      name,
+      workExp,
+      linkedinUrl,
+      project,
+      references,
+      skill,
+      education,
+      objective,
+      userImg: imageName, // Store only the image name
     });
+    // console.log(userImg)
 
     res.status(201).json({ user: user._id, created: true });
+    console.log(user)
   } catch (err) {
     console.error(err);
     const errors = handleErrors(err);
     res.json({ errors, created: false });
   }
 };
+
 
 //delete user
 module.exports.deleteUser = async (req, res) => {
@@ -321,7 +375,7 @@ module.exports.editUser = async (req, res) => {
 
 // upload files
 const uploadFilesMiddleware = require("../middlewares/upload");
-const fs = require("fs");
+
 
 module.exports.upload_file = async (req, res) => {
   try {
@@ -516,7 +570,8 @@ module.exports.update_fields = async (req, res) => {
 
 //add a company
 
-const Company = require("../model/companyModel")
+const Company = require("../model/companyModel");
+const { userInfo } = require('os');
 
 module.exports.addCompany = async(req, res) =>{
   try{
@@ -579,3 +634,129 @@ module.exports.get_companyName = async (req, res) => {
 };
 
 
+
+const { promisify } = require('util');
+const readFile = promisify(fs.readFile);
+var ImageModule = require('docxtemplater-image-module-free');
+
+module.exports.generate_pdf = async (req, res) => {
+  const userId = req.params.id;
+
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const { email, mobileNo, address, userImg, linkedinUrl, workExp, skill, project, references, name, education, objective } = user;
+
+    
+    if (!userImg) {
+      return res.status(400).json({ error: 'Invalid user image data' });
+    }
+
+    // console.log('dirname',path.resolve(`${__dirname}/../Images`));
+
+    const getUerImage = path.resolve(`${__dirname}/../Images/${userImg}`)
+
+    const imageOptions = {
+      centered: false,
+      getImage(tagValue, tagName) {
+          console.log({ tagValue, tagName });
+          return fs.readFileSync(tagValue);
+      },
+      getSize() {
+          return [150, 150];
+      },
+  };
+
+    const templateContent = await readFile('./sample1.docx', 'binary');
+    const zip = new JSZip(templateContent);
+    const doc = new Docxtemplater(zip,{
+      modules: [new ImageModule(imageOptions)]
+    });
+    // doc.loadZip(zip);
+
+    // Format user information
+    const userData = {
+      name,
+      email,
+      mobileNo,
+      address,
+      linkedinUrl,
+      workExp,
+      skill,
+      project,
+      references,
+      education,
+      objective,
+      userImg: getUerImage // Pass contentType for rendering images
+    };
+
+    doc.setData(userData);
+
+    try {
+      doc.render();
+      console.log('Document rendered successfully');
+    } catch (error) {
+      console.error('Error during rendering:', error);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+
+    const modifiedDocument = doc.getZip().generate({ type: 'nodebuffer' });
+    res.writeHead(200, {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'Content-Disposition': 'attachment; filename=document.docx',
+    });
+    // console.log(modifiedDocument.toString('base64'));
+
+    // const dataURL = `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,`;
+    // res.json({ dataURL, userData });
+    // console.log(userData);
+    res.end(modifiedDocument);
+  } catch (error) {
+    console.error('Error fetching user details:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+
+// module.exports.generate_pdf = async (req, res) => {
+//   const userId = req.params.id; 
+
+//   try {
+  
+//     const user = await User.findById(userId);
+
+//     if (!user) {
+//       return res.status(404).json({ error: 'User not found' });
+//     }
+
+   
+//     const { email, mobileNo, address, userImg } = user;
+
+//     const templateContent = fs.readFileSync('./sample1.docx', 'binary');
+//     const zip = new JSZip(templateContent);
+//     const doc = new Docxtemplater();
+//     doc.loadZip(zip);
+//     doc.setData({ email, mobileNo, address }); 
+
+//     try {
+//       doc.render();
+//     } catch (error) {
+//       console.error('Error during rendering:', error);
+//       return res.status(500).json({ error: 'Internal Server Error' });
+//     }
+
+  
+//     const modifiedDocument = doc.getZip().generate({ type: 'base64' });
+//     const dataURL = `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${modifiedDocument}`;
+
+//     res.json({ dataURL }); 
+//   } catch (error) {
+//     console.error('Error fetching user details:', error);
+//     return res.status(500).json({ error: 'Internal Server Error' });
+//   }
+// };

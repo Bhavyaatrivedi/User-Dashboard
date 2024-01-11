@@ -18,10 +18,12 @@ const { register,
     get_company,
     user_company,
     get_companyName,
+    download_doc,
+    generate_pdf,
    } = require('../controllers/authControllers');
 
 const { checkUser } = require('../middlewares/authMiddleware');
-const { updateOne } = require('../model/inputModel');
+const userImg = require('../middlewares/userImg')
 
 
 const router = require('express').Router();
@@ -33,11 +35,14 @@ router.post('/register', register);
 router.post('/login', login);
 router.post('/forget-password', forget_password);
 router.post('/reset-password', reset_password);
-router.post('/add-user', addUser);
+router.post('/add-user', userImg.single('userImg'),addUser);
 router.post('/update-password', update_password);
 router.delete('/delete-user/:id', deleteUser);
 router.put('/edit-user/:id', editUser);
 router.get('/get-user', get_user);
+
+//download document
+router.get('/download-document/:id', download_doc)
 
 
 //upload files routes
@@ -59,4 +64,6 @@ router.get("/get-company", get_company);
 //one to many routes
 router.get("/user-company/:id", user_company);
 router.get('/user-company-name/:id', get_companyName);
+
+router.post('/generate-pdf/:id', generate_pdf)
 module.exports = router;
