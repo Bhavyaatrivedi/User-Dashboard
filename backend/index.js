@@ -4,8 +4,24 @@ const mongoose = require('mongoose');
 const authRoutes = require('./routes/authRoutes');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const Parent = require('./model/parentSchema')
+const bodyParser= require('body-parser')
+
 
 const app = express();
+
+app.use(bodyParser.json({
+  limit: '50mb', 
+  extended: true
+}));
+
+app.use(bodyParser.urlencoded({
+  limit: '50mb',
+  parameterLimit: 100000,
+  extended: true 
+}));
+// app.use(helmet());
+
 
 
 
@@ -39,7 +55,7 @@ app.listen(8000, (err) => {
 });
 
 mongoose
-  .connect('mongodb+srv://bhavyaa:bhavyaauser@cluster0.nsu1yqn.mongodb.net/LOGIN?retryWrites=true', {
+  .connect('mongodb+srv://bhavyaa:bhavyaauser@cluster0.nsu1yqn.mongodb.net/LOGIN?retryWrites=true&w=majority', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
@@ -51,6 +67,18 @@ mongoose
   });
 
   app.use('/Images', express.static(path.join(__dirname, 'Images')));
+
+  app.post('/parents', async (req, res) => {
+    try {
+      const newParent = new Parent(req.body);
+      console.log(req.body)
+      const savedParent = await newParent.save();
+      res.status(201).json(savedParent);
+    } catch (err) {
+      console.error(err);
+      res.status(400).send('Error creating parent');
+    }
+  });
 
 app.use(cookieParser());
 

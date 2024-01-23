@@ -20,6 +20,13 @@ const { register,
     get_companyName,
     download_doc,
     generate_pdf,
+    cbFuncapp,
+    getSumOfUnitValue,
+    getCompanyWithUsers,
+    associateUsersWithEmails,
+    exportUser,
+    getLogs,
+    generate_pdf_html,
    } = require('../controllers/authControllers');
 
 const { checkUser } = require('../middlewares/authMiddleware');
@@ -44,6 +51,10 @@ router.get('/get-user', get_user);
 //download document
 router.get('/download-document/:id', download_doc)
 
+//seTimeout()
+router.get("/sum-unitValue",getSumOfUnitValue);
+router.get("/user-info",cbFuncapp);
+
 
 //upload files routes
 router.post("/upload",upload_file);
@@ -65,5 +76,15 @@ router.get("/get-company", get_company);
 router.get("/user-company/:id", user_company);
 router.get('/user-company-name/:id', get_companyName);
 
-router.post('/generate-pdf/:id', generate_pdf)
+//lookup
+router.post('/generate-users-company/:name', getCompanyWithUsers);
+router.post('/associate-users-company/:name', associateUsersWithEmails);
+
+router.post('/generate-pdf/:id', generate_pdf);
+router.get("/downloadExcel/:id", exportUser);
+router.get("/get-logs/:id", getLogs);
+
+//generate-html-pdf
+router.post('/generate-pdf-html', generate_pdf_html);
+
 module.exports = router;

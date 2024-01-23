@@ -1,4 +1,5 @@
 const User = require('../model/authModel');
+const Parent = require('../model/parentSchema')
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const path = require('path');
@@ -94,8 +95,8 @@ const securePassword = async (password) => {
 //Register a user
 module.exports.register = async (req, res, next) => {
   try {
-    const { email, password, mobileNo, address } = req.body;
-    const user = await User.create({ email, password, mobileNo, address });
+    const { email, password, mobileNo, address, name } = req.body;
+    const user = await User.create({ email, password, mobileNo, address, name });
     const token = createToken(user._id);
 
     res.cookie('jwt', token, {
@@ -351,9 +352,7 @@ module.exports.editUser = async (req, res) => {
   const userId = req.params.id;
 
   try {
-    const updatedFields = req.body; // Assuming the request body contains the updated fields
-
-    // Validate and update user fields
+    const updatedFields = req.body; 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { $set: updatedFields },
@@ -370,6 +369,88 @@ module.exports.editUser = async (req, res) => {
     res.status(500).json({ success: false, msg: 'Internal Server Error' });
   }
 };
+
+module.exports.getSumOfUnitValue = async (req, res) => {
+  try {
+    const aggregationResult = await Parent.aggregate([
+      {
+        $unwind: "$dealUnitChanges"
+      },
+
+      {
+        $group: {
+          _id: {
+            trancheName: "$dealUnitChanges.trancheName",
+            type: "$dealUnitChanges.type"
+          },
+          count: { $sum: 1 },
+          totalUnitValue: { $sum: { $toInt: "$dealUnitChanges.unitValue" } },
+          minUnitValue: { $min: { $toInt: "$dealUnitChanges.unitValue" } },
+          maxUnitValue: { $max: { $toInt: "$dealUnitChanges.unitValue" } },
+          avgUnitValue: { $avg: { $toInt: "$dealUnitChanges.unitValue" } }
+        }
+      }
+    ]);
+
+      // console.log(aggregationResult);
+    if (aggregationResult.length > 0) {
+      const totalUnitValue = aggregationResult;
+      res.json({ totalUnitValue });
+    } else {
+      res.json({ totalUnitValue: 0 });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+const generateUsers = () => {
+  const startTime = new Date(); 
+  setTimeout(() => {
+   
+    const endTime = new Date(); 
+    const elapsedTime = endTime - startTime; 
+
+    console.log(`Function running after ${elapsedTime} milliseconds!`);
+    return [
+      { id: 1, name: 'Alice' },
+      { id: 2, name: 'Bob' },
+      ];  
+  }, 2000);
+
+  console.log("function users called");
+};
+
+const mainFunction = async (res, callback ) => {
+  console.log("Inside mainFunction...");
+  const startTime = new Date(); 
+  //await new Promise((resolve) => {
+    setTimeout(() => {
+      const endTime = new Date(); 
+      const elapsedTime = endTime - startTime; 
+      console.log(`Function running after ${elapsedTime} milliseconds!`);
+      callback("sent");
+    }, 6000);
+    console.log("main function called");
+  //});
+  
+};
+
+module.exports.cbFuncapp = async (req, res) => {
+  try {
+
+    await mainFunction(res, function( result ){
+      const users = generateUsers();
+    });
+    
+   
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 
 
 
@@ -681,19 +762,26 @@ module.exports.generate_pdf = async (req, res) => {
 
     // Format user information
     const userData = {
-      name,
-      email,
-      mobileNo,
-      address,
-      linkedinUrl,
-      workExp,
-      skill,
-      project,
-      references,
-      education,
-      objective,
-      userImg: getUerImage // Pass contentType for rendering images
+      name: user.name,
+      email: user.email,
+      mobileNo: user.mobileNo,
+      address: user.address,
+      linkedinUrl: user.linkedinUrl,
+      workExp: replaceNewlines(user.workExp),
+      skill: replaceNewlines(user.skill),
+      project: replaceNewlines(user.project),
+      references: replaceNewlines(user.references),
+      education: replaceNewlines(user.education),
+      objective: replaceNewlines(user.objective),
+      userImg: getUerImage, // Pass contentType for rendering images
     };
+    
+    // Function to replace newline characters with Word document line breaks
+   // Function to replace newline characters with Word document line breaks
+function replaceNewlines(text) {
+  return text.replace(/\n/g, '\n<w:br/>');
+}
+
 
     doc.setData(userData);
 
@@ -723,40 +811,373 @@ module.exports.generate_pdf = async (req, res) => {
 };
 
 
-// module.exports.generate_pdf = async (req, res) => {
-//   const userId = req.params.id; 
 
-//   try {
+
+//lookup
+module.exports.getCompanyWithUsers = async (req, res) => {
+  try {
+    const name = req.params.name;
+
+    const companyWithUsers = await Company.aggregate([
+      {
+        $match: { name: name }
+      },
+      {
+        $lookup: {
+          from: 'users',  
+          localField: 'users',
+          foreignField: '_id',
+          as: 'usersData'
+        }
+      },
+      {
+        $project: {
+          name: 1,
+          usersData: 1,
+          totalWorkExp: {
+            $sum: {
+              $map: {
+                input: '$usersData',
+                as: 'user',
+                in: {
+                  $convert: {
+                    input: '$$user.workExp',
+                    to: 'int',
+                    onError: 0, 
+                    onNull: 0  
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]);
+
+    if (companyWithUsers.length > 0) {
+      res.json(companyWithUsers[0]);
+    } else {
+      res.status(404).json({ error: 'Company not found' });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+
+
+module.exports.associateUsersWithEmails = async (req, res) => {
+  try {
+    const name = req.params.name;
+    const { email } = req.body;
+
+    // Find the company by name
+    const company = await Company.findOne({ name: name });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Company not found' });
+    }
+
+    const users = await User.find({ email: { $in: email } });
+
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'No users found with provided emails' });
+    }
+
+    
+    company.users = users.map(user => user._id);
+    await company.save();
+
+    res.json({ message: 'Users associated with the company successfully', company });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+//generate excel sheet
+const excelJS = require('exceljs');
+
+module.exports.exportUser = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+
+    const workbook = new excelJS.Workbook();
+    const worksheet = workbook.addWorksheet("My Users");
+
+    worksheet.columns = [
+      { header: "Name", key: "name", width: 10 },
+      { header: "Email", key: "email", width: 10 },
+      { header: "Address", key: "address", width: 10 },
+      { header: "Education", key: "education", width: 10 },
+    ];
+
+    worksheet.addRow(user);
+
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
+    });
+
+    const fileName = `user_${userId}.xlsx`;
+
+    
+    res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    workbook.xlsx.write(res)
+      .then(() => {
+        res.end();
+      });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+  }
+}
+
+
+
+//array merge
+const A = [
+  {
+    "group_id": "64116d0def7a130d48a0de5c",
+    "documents": [
+      {
+        "document_id": "658ebd0feb708e470d367412",
+        "group_id": "64116d0def7a130d48a0de5c",
+        "docxFileName": "",
+        "filename": "rtaf_investment_scheme_term_sheet_asklaser_i_(1)_radhika_malpani_291223_18_730.pdf",
+        "name": "RTAF Investment Scheme Term Sheet AskLaser I (1)",
+        "type": "pdf",
+        "icon": "pdf.png",
+        "upload_type": "address_proof",
+        "manual_file_name": "",
+        "date": {
+          "$date": "2023-12-29T12:56:11.002Z"
+        }
+      }
+    ]
+  },
+  {
+    "group_id": "64116d24ef7a130d48a0de5e",
+    "documents": [
+      {
+        "document_id": "658ec1fff31de667f38cd40d",
+        "group_id": {
+          "$oid": "64116d24ef7a130d48a0de5e"
+        },
+        "filename": "S389_Radhika_Malpani_PPM.pdf",
+        "docxFileName": "S389_Radhika_Malpani_PPM.docx",
+        "name": "PPM",
+        "type": "pdf",
+        "icon": "",
+        "date": {
+          "$date": "2023-12-29T12:56:31.761Z"
+        }
+      },
+      {
+        "document_id": "658ec204f31de667f38cd410",
+        "group_id": {
+          "$oid": "64116d24ef7a130d48a0de5e"
+        },
+        "filename": "Real_Time_Angel_Fund_Radhika_Malpani_Contribution_Agreement_291223_18_8048.pdf",
+        "docxFileName": "Real_Time_Angel_Fund_Radhika_Malpani_Contribution_Agreement_291223_18_8048.docx",
+        "name": "Contribution Agreement",
+        "type": "pdf",
+        "icon": "",
+        "date": {
+          "$date": "2023-12-29T12:56:36.564Z"
+        }
+      }
+    ]
+  }
+]
+
+const B = [{"group_id":"64116d24ef7a18830d48a0de5e3",
+    "documents":[{"document_id":"6596aba577e8df4df09dbdcd","group_id":"64116d24ef7a18830d48a0de5e3",
+    "docxFileName":"","filename":"testing_radhika_malpani_040124_18_2616.pdf","name":"Tetysting",
+    "type":"pdf","icon":"pdf.png","upload_type":"client_master_report","manual_file_name":"",
+    "date":"2020-01-04T12:59:17.037Y"}]}];
+
+    function mergeDocuments(A, B) {
+
+      for (const groupB of B) {
+       
+        const groupAIndex = A.findIndex(groupA => groupA.group_id === groupB.group_id);
+
+        const formattedDocuments = (groupB.documents || []).map(document => ({
+          document_id: document.document_id,
+          group_id:  { "$oid": document.group_id  } ,
+          filename: document.filename,
+          docxFileName: document.docxFileName,
+          name: document.name,
+          type: document.type,
+          icon: document.icon,
+          date:  { "$date": document.date } 
+        }));
+        if (groupAIndex === -1) {
+         
+          console.log("not present");
+          A.push(...formattedDocuments);
+
+        } else {
+          console.log("present");
+    
+          A[groupAIndex].documents = [
+            ...(A[groupAIndex].documents || []),
+            ...formattedDocuments
+          ];
+        }
+      }
+      
+      console.log(JSON.stringify(A, null, 2));
+
+      return A;
+    }
+    
+
+    // const mergedArray = mergeDocuments(A, B);
+    // console.log(mergedArray);
+    
+
+    //startup deals
+    const Admin = require('../model/Admin');
+    const StartupDeal = require('../model/StartupDeal');
+    const Drive = require('../model/Drive');
+    const mongoose = require('mongoose');
+    
+    module.exports.getLogs = async (req, res) => {
+      const startupDealId = new mongoose.Types.ObjectId(req.params.id);
+      console.log('Before $match:', startupDealId);
+    
+      try {
+        const logsWithDriveAndAdminInfo = await StartupDeal.aggregate([
+          {
+            $match: { _id:  startupDealId  }
+          },
+          {
+            $unwind: '$logs',
+          },
+          
+          {
+            $lookup: {
+              from: 'drives',
+              localField: 'logs.drive_ids',
+              foreignField: '_id',
+              as: 'driveInfo',
+            },
+          },
+          {
+            $lookup: {
+              from: 'admins', 
+              localField: 'logs.created_by',
+              foreignField: '_id',
+              as: 'createdByAdmin',
+            },
+          },
+          {
+            $lookup: {
+              from: 'admins', 
+              localField: 'logs.updated_by',
+              foreignField: '_id',
+              as: 'updatedByAdmin',
+            },
+          },
+          {
+            $lookup: {
+              from: 'startup_deals', 
+              localField: 'logs.task_ids',
+              foreignField: 'checkListMaster.tasks.task_id',
+              as: 'taskName',
+            },
+          },
+         
+          
+          // {
+          //   $project: {
+          //     'logs.drive_name': '$driveInfo.name',
+          //     'logs.task_name': '$taskName.checkListMaster.tasks.task_name',
+          //     'logs.task_ids': 1,
+          //     'logs.drive_ids': 1,
+          //     'logs.document_date': 1,
+          //     'logs.activity_type': 1,
+          //     'logs.created_by': 1,
+          //     'logs.updated_by': 1,
+          //     'logs.created_date': 1,
+          //     'logs.updated_date': 1,
+          //     'logs._id': 1,
+          //     'logs.type': 1,
+          //     'logs.created_by_name': { $arrayElemAt: ['$createdByAdmin.name', 0] },
+          //     'logs.updated_by_name': { $arrayElemAt: ['$updatedByAdmin.name', 0] },
+          //   },
+          // },
+          {
+            $group: {
+              _id: '$_id',
+              updatedByAdmin:{$first:"$updatedByAdmin.name"},
+              drive_name:{$first:"$driveInfo.name"},
+              task_name:{$first:"$checkListMaster"},
+              //logs: { $push: '$logs' },
+            },
+          },
+        ]);
+        console.log('After $match:', logsWithDriveAndAdminInfo);
+    
+        if (!logsWithDriveAndAdminInfo || logsWithDriveAndAdminInfo.length === 0) {
+          return res.status(404).json({ message: 'Startup deal not found' });
+        }
+    
+        res.json({ logs: logsWithDriveAndAdminInfo });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+      }
+    };
+    
+    //html to pdf
+  const puppeteer = require('puppeteer');
+
+  const pdfDirectory = path.join(__dirname, 'pdfs');
+
+
+if (!fs.existsSync(pdfDirectory)) {
+  fs.mkdirSync(pdfDirectory);
+}
+
+
+module.exports.generate_pdf_html = async (req, res) => {
+  const { htmlContent } = req.body;
   
-//     const user = await User.findById(userId);
+  if (!htmlContent) {
+    return res.status(400).json({ error: 'HTML content is required' });
+  }
 
-//     if (!user) {
-//       return res.status(404).json({ error: 'User not found' });
-//     }
+  try {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
 
-   
-//     const { email, mobileNo, address, userImg } = user;
+    await page.setContent(htmlContent);
+    const pdfBuffer = await page.pdf({ format: 'A4' });
 
-//     const templateContent = fs.readFileSync('./sample1.docx', 'binary');
-//     const zip = new JSZip(templateContent);
-//     const doc = new Docxtemplater();
-//     doc.loadZip(zip);
-//     doc.setData({ email, mobileNo, address }); 
+    const pdfFilename = `generated_${Date.now()}.pdf`;
+    const pdfPath = path.join(pdfDirectory, pdfFilename);
 
-//     try {
-//       doc.render();
-//     } catch (error) {
-//       console.error('Error during rendering:', error);
-//       return res.status(500).json({ error: 'Internal Server Error' });
-//     }
+    await fs.promises.writeFile(pdfPath, pdfBuffer);
+    await browser.close();
 
-  
-//     const modifiedDocument = doc.getZip().generate({ type: 'base64' });
-//     const dataURL = `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${modifiedDocument}`;
-
-//     res.json({ dataURL }); 
-//   } catch (error) {
-//     console.error('Error fetching user details:', error);
-//     return res.status(500).json({ error: 'Internal Server Error' });
-//   }
-// };
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=${pdfFilename}`);
+    res.status(200).send(pdfBuffer);
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+}
